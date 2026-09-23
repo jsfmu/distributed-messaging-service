@@ -48,6 +48,29 @@ def start_client():
     finally:
         client_socket.close()
 
+    def handle_client(client_socket, client_address):
+
+        print(f"Client connected: {client_address}")
+
+        while True:
+
+            data = client_socket.recv(1024)
+
+            if not data:
+                break
+
+            message = data.decode()
+
+            print(f"{client_address}: {message}")
+
+            response = f"Server received: {message}"
+
+            client_socket.sendall(response.encode())
+
+        client_socket.close()
+
+        print(f"Client disconnected: {client_address}")
+
 
 if __name__ == "__main__":
     start_client()
