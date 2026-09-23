@@ -1,26 +1,30 @@
 import socket
 
 HOST = "127.0.0.1"
-PORT = 9000
-
+PORT = 5001
 
 server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 server_socket.bind((HOST, PORT))
-
 server_socket.listen()
 
-print(f"Listening on {HOST}:{PORT}")
+print(f"Server listening on {HOST}:{PORT}")
 
-client_socket, client_address = server_socket.accept()
+while True:
+    client_socket, client_address = server_socket.accept()
 
-print(f"Connected: {client_address}")
+    print(f"Client connected: {client_address}")
 
-data = client_socket.recv(1024)
+    while True:
+        data = client_socket.recv(4096)
 
-print(f"Received: {data}")
+        if not data:
+            break
 
-client_socket.sendall(b'{"status":"ok"}\n')
+        message = data.decode("utf-8")
+        print(f"Received: {message}")
 
-client_socket.close()
-server_socket.close()
+        response = f"Server received: {message}"
+        client_socket.sendall(response.encode("utf-8"))
+
+    client_socket.close()
