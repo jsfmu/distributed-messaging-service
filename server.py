@@ -3,6 +3,7 @@ import threading
 import json
 
 from store import users
+from store import channels
 
 
 HOST = "127.0.0.1"
@@ -12,6 +13,9 @@ PORT = 5001
 def handle_client(client_socket, client_address):
 
     print(f"Client connected: {client_address}")
+
+    # Tracks which user is logged in on THIS connection
+    current_user = None
 
     try:
 
@@ -29,14 +33,6 @@ def handle_client(client_socket, client_address):
 
             print(f"{client_address}: {message}")
 
-            # Split command into pieces
-            #
-            # "REGISTER joe"
-            #
-            # becomes:
-            #
-            # ["REGISTER", "joe"]
-
             parts = message.split()
 
             # Empty command
@@ -45,10 +41,6 @@ def handle_client(client_socket, client_address):
 
             command = parts[0].upper()
 
-            # --------------------------------
-            # REGISTER <username>
-            # --------------------------------
-
             if command == "REGISTER":
 
                 # Make sure username was provided
@@ -56,6 +48,7 @@ def handle_client(client_socket, client_address):
 
                     response = {
                         "status": "error",
+                        "code": "BAD_REQUEST",
                         "message": "Usage: REGISTER <username>"
                     }
 
@@ -68,6 +61,7 @@ def handle_client(client_socket, client_address):
 
                         response = {
                             "status": "error",
+                            "code": "CONFLICT",
                             "message": "Username already exists"
                         }
 
@@ -80,21 +74,94 @@ def handle_client(client_socket, client_address):
 
                         response = {
                             "status": "ok",
+                            "operation": "register",
                             "username": username
                         }
 
-            # --------------------------------
-            # Unknown command
-            # --------------------------------
+            elif command == "LOGIN":
+
+                # Make sure username was provided
+                if len(parts) != 2:
+
+                    response = {
+                        "status": "error",
+                        "code": "BAD_REQUEST",
+                        "message": "Usage: LOGIN <username>"
+                    }
+
+                else:
+
+                    username = parts[1]
+
+                    # User must already be registered
+                    if username not in users:
+
+                        response = {
+                            "status": "error",
+                            "code": "NOT_FOUND",
+                            "message": "User does not exist"
+                        }
+
+                    else:
+
+                        # Associate this TCP connection
+                        # with this username
+                        current_user = username
+
+                        response = {
+                            "status": "ok",
+                            "operation": "login",
+                            "username": username
+                        }
+
+            elif command == "JOIN":
+
+                # User must be logged in first
+                if current_user is None:
+
+                    response = {
+                        "status": "error",
+                        "code": "UNAUTHORIZED",
+                        "message": "You must login first"
+                    }
+
+                elif len(parts) != 2:
+
+                    response = {
+                        "status": "error",
+                        "code": "BAD_REQUEST",
+                        "message": "Usage: JOIN <channel>"
+                    }
+
+                else:
+
+                    channel_name = parts[1]
+
+                    # Create the channel if it doesn't exist
+                    if channel_name not in channels:
+
+                        channels[channel_name] = {
+                            "members": set()
+                        }
+
+                    # Add logged-in user to channel
+                    channels[channel_name]["members"].add(current_user)
+
+                    response = {
+                        "status": "ok",
+                        "operation": "join",
+                        "channel": channel_name
+                    }
 
             else:
 
                 response = {
                     "status": "error",
+                    "code": "BAD_REQUEST",
                     "message": "Unknown command"
                 }
 
-            # Convert dictionary → JSON
+            # Convert dictionary -> JSON
             response_json = json.dumps(response)
 
             # Send response to client
@@ -113,35 +180,16 @@ def handle_client(client_socket, client_address):
         print(f"Client disconnected: {client_address}")
 
 
-# --------------------------------
-# Create TCP server socket
-# --------------------------------
-
 server_socket = socket.socket(
     socket.AF_INET,
     socket.SOCK_STREAM
 )
 
-
-# --------------------------------
-# Bind
-# --------------------------------
-
 server_socket.bind((HOST, PORT))
-
-
-# --------------------------------
-# Listen
-# --------------------------------
 
 server_socket.listen()
 
 print(f"Server listening on {HOST}:{PORT}")
-
-
-# --------------------------------
-# Accept clients
-# --------------------------------
 
 while True:
 
