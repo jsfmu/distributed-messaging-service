@@ -10,31 +10,34 @@ def start_client():
     try:
         # Connect to Mini Discord TCP server
         client_socket.connect((HOST, PORT))
+
         print(f"Connected to Mini Discord server at {HOST}:{PORT}")
 
         while True:
             command = input("> ")
 
-            # Don't send an empty command
+            # Don't send empty commands
             if not command.strip():
                 continue
 
-            # Send command to server
-            client_socket.sendall(command.encode("utf-8"))
+            # Send newline-delimited command
+            client_socket.sendall(
+                (command + "\n").encode("utf-8")
+            )
 
-            # Optional local exit command
+            # Local exit command
             if command.lower() == "quit":
                 break
 
-            # Wait for response from server
+            # Wait for server response
             response = client_socket.recv(4096)
 
-            # recv() returning b"" means the server disconnected
+            # b"" means the server disconnected
             if not response:
                 print("Server disconnected.")
                 break
 
-            print(response.decode("utf-8"))
+            print(response.decode("utf-8").strip())
 
     except ConnectionRefusedError:
         print("Could not connect to the server.")
@@ -47,29 +50,6 @@ def start_client():
 
     finally:
         client_socket.close()
-
-    def handle_client(client_socket, client_address):
-
-        print(f"Client connected: {client_address}")
-
-        while True:
-
-            data = client_socket.recv(1024)
-
-            if not data:
-                break
-
-            message = data.decode()
-
-            print(f"{client_address}: {message}")
-
-            response = f"Server received: {message}"
-
-            client_socket.sendall(response.encode())
-
-        client_socket.close()
-
-        print(f"Client disconnected: {client_address}")
 
 
 if __name__ == "__main__":
