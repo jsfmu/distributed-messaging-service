@@ -153,6 +153,59 @@ def handle_client(client_socket, client_address):
                         "channel": channel_name
                     }
 
+            elif command == "LEAVE":
+
+                # User must be logged in
+                if current_user is None:
+
+                    response = {
+                        "status": "error",
+                        "code": "UNAUTHORIZED",
+                        "message": "You must login first"
+                    }
+
+                # Make sure a channel was provided
+                elif len(parts) != 2:
+
+                    response = {
+                        "status": "error",
+                        "code": "BAD_REQUEST",
+                        "message": "Usage: LEAVE <channel>"
+                    }
+
+                else:
+
+                    channel_name = parts[1]
+
+                    # Make sure the channel exists
+                    if channel_name not in channels:
+
+                        response = {
+                            "status": "error",
+                            "code": "NOT_FOUND",
+                            "message": "Channel does not exist"
+                        }
+
+                    # Make sure the user is actually in the channel
+                    elif current_user not in channels[channel_name]["members"]:
+
+                        response = {
+                            "status": "error",
+                            "code": "NOT_MEMBER",
+                            "message": "You are not a member of this channel"
+                        }
+
+                    else:
+
+                        # Remove user from channel
+                        channels[channel_name]["members"].remove(current_user)
+
+                        response = {
+                            "status": "ok",
+                            "operation": "leave",
+                            "channel": channel_name
+                        }
+
             else:
 
                 response = {
